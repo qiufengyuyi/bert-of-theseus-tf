@@ -891,12 +891,6 @@ def transformer_model_theseus(input_tensor,
 
     all_layer_outputs = []
     compress_ratio = num_hidden_layers // succ_layers
-    sample_prob = tf.random_uniform(shape=[], minval=0, maxval=1)
-    # 替换概率越大，sample_prob大于replace_rate_prob的难度越高，condition越容易变成false，gate偏向1,因此更倾向于用suc替换pre
-    condition = sample_prob > replace_rate_prob
-    condition = tf.cast(condition, tf.bool)
-    gate = tf.cond(condition, lambda: tf.zeros_like(prev_output),
-                   lambda: tf.ones_like(prev_output))
 
     def single_layer_implement(layer_type,layer_id, layer_inputs):
         with tf.variable_scope(layer_type+"layer_%d" % layer_id):
@@ -965,6 +959,12 @@ def transformer_model_theseus(input_tensor,
             for offset in range(compress_ratio):
                 pre_layer_output = single_layer_implement("",layer_idx*compress_ratio+offset,pre_layer_output)
                 # print("predLayer:{}".format(pre_layer_output))
+            sample_prob = tf.random_uniform(shape=[], minval=0, maxval=1)
+            # 替换概率越大，sample_prob大于replace_rate_prob的难度越高，condition越容易变成false，gate偏向1,因此更倾向于用suc替换pre
+            condition = sample_prob > replace_rate_prob
+            condition = tf.cast(condition, tf.bool)
+            gate = tf.cond(condition, lambda: tf.zeros_like(prev_output),
+                   lambda: tf.ones_like(prev_output))
             layer_output = gate * suc_layer_output + (1. - gate)*pre_layer_output
             prev_output = layer_output
             all_layer_outputs.append(layer_output)
